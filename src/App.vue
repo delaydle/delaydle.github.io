@@ -1,5 +1,11 @@
 <template>
-  <div class="game-container">
+  <div class="game-container" @keydown="handleKeydown" tabindex="0">
+    <!-- Hidden input for keyboard capture -->
+    <input
+      ref="hiddenInput"
+      type="text"
+      style="position: absolute; left: -9999px; opacity: 0;"
+    />
     <header class="game-header">
       <h1>Delaydle</h1>
       <p class="subtitle">A delayed Wordle game - feedback on your last guess appears when you guess again!</p>
@@ -24,6 +30,10 @@
             'tile',
             guess.revealed ? `tile-${guess.feedback[letterIndex]}` : 'tile-empty'
           ]"
+          :style="{
+            animationDelay: guess.revealed ? `${letterIndex * 0.8}s` : '0s',
+            animation: guess.revealed ? 'tileFlip 2s ease-in-out forwards' : 'none'
+          }"
         >
           {{ letter.toUpperCase() }}
         </div>
@@ -46,42 +56,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="stats">
-      <div>Guesses used: {{ gameState.guesses.length }} / 7</div>
-    </div>
-
-    <!-- Input area -->
-    <div v-if="!gameState.gameOver" class="input-area">
-      <input
-        v-model="currentGuess"
-        @keydown.enter="submitGuess"
-        type="text"
-        maxlength="5"
-        placeholder="Type a 5-letter word"
-        class="guess-input"
-        :disabled="loadingWords"
-      />
-      <button @click="submitGuess" :disabled="!canSubmit" class="submit-button">
-        Guess
-      </button>
-    </div>
-
-    <!-- Keyboard hint -->
-    <div class="keyboard-hint">
-      <p>Press Enter or click Guess to submit a word</p>
-    </div>
-
-    <!-- Status message -->
-    <div v-if="statusMessage" :class="['status-message', statusMessageType]">
-      {{ statusMessage }}
-    </div>
-
-    <!-- New game button -->
-    <button v-if="gameState.gameOver" @click="resetGame" class="new-game-button">
-      Play Again
-    </button>
-
     <!-- Onscreen Keyboard -->
     <div v-if="!gameState.gameOver" class="keyboard-container">
       <div v-for="row in keyboardRows" :key="row.join('')" class="keyboard-row">
@@ -93,6 +67,22 @@
           :class="['key', `key-${letterStatuses[letter]}`]"
         >
           {{ letter }}
+        </button>
+      </div>
+      <div class="keyboard-row">
+        <button
+          @click="submitGuess"
+          :disabled="currentGuess.length !== 5 || !canSubmit || loadingWords"
+          class="key key-action"
+        >
+          Enter
+        </button>
+        <button
+          @click="removeLastLetter"
+          :disabled="currentGuess.length === 0 || loadingWords"
+          class="key key-action"
+        >
+          Backspace
         </button>
       </div>
     </div>
@@ -125,6 +115,7 @@ const gameState = ref<GameState>({
 });
 
 // UI state
+const hiddenInput = ref<HTMLInputElement>();
 const currentGuess = ref('');
 const allWords = ref<string[]>([]);
 const validGuesses = ref<string[]>([]);
@@ -248,6 +239,33 @@ const addLetterFromKeyboard = (letter: string) => {
   }
 };
 
+const removeLastLetter = () => {
+  if (currentGuess.value.length > 0) {
+    currentGuess.value = currentGuess.value.slice(0, -1);
+  }
+};
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (gameState.value.gameOver) return;
+  
+  const key = event.key;
+  
+  if (key === 'Enter') {
+    event.preventDefault();
+    submitGuess();
+  } else if (key === 'Backspace') {
+    event.preventDefault();
+    removeLastLetter();
+  } else {
+    const upperKey = key.toUpperCase();
+    const isLetter = /^[A-Z]$/.test(upperKey);
+    
+    if (isLetter && currentGuess.value.length < 5) {
+      currentGuess.value += upperKey.toLowerCase();
+    }
+  }
+};
+
 const showStatus = (message: string, type: 'error' | 'success' | 'info') => {
   statusMessage.value = message;
   statusMessageType.value = type;
@@ -281,6 +299,12 @@ onMounted(async () => {
     }
 
     loadingWords.value = false;
+    
+    // Focus the game container so it can receive keyboard events
+    setTimeout(() => {
+      const gameContainer = document.querySelector('.game-container') as HTMLElement;
+      gameContainer?.focus();
+    }, 0);
   } catch (error) {
     console.error('Failed to load words:', error);
     showStatus('Error loading word lists', 'error');
@@ -372,6 +396,7 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   justify-content: center;
+  perspective: 1000px;
 }
 
 .tile {
@@ -387,6 +412,8 @@ onMounted(async () => {
   color: white;
   transition: all 0.3s ease;
   animation: popIn 0.3s ease;
+  perspective: 1000px;
+  transform-style: preserve-3d;
 }
 
 @keyframes popIn {
@@ -403,6 +430,20 @@ onMounted(async () => {
   }
 }
 
+@keyframes tileFlip {
+  0% {
+    transform: rotateY(0deg) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: rotateY(90deg) rotateX(5deg) scale(0.95);
+  }
+  100% {
+    transform: rotateY(0deg) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
 .tile-empty {
   background-color: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -415,9 +456,9 @@ onMounted(async () => {
 }
 
 .tile-wrong-position {
-  background-color: #f59e0b;
+  background-color: #fbbf24;
   border-color: #d97706;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
 }
 
 .tile-wrong {
@@ -617,7 +658,7 @@ onMounted(async () => {
 }
 
 .key-wrong-position {
-  background-color: #f59e0b;
+  background-color: #fbbf24;
   border-color: #d97706;
   color: white;
 }
@@ -633,6 +674,14 @@ onMounted(async () => {
   background-color: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   color: white;
+}
+
+.key-action {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 12px;
+  min-width: 60px;
 }
 
 @media (max-width: 600px) {
