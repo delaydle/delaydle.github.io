@@ -1,5 +1,4 @@
 <template>
-  <p style="text-align: center; font-size: 60pt">{{ gameState.targetWord }}</p>
   <div class="game-container">
     <header class="game-header">
       <h1>Delaydle</h1>
