@@ -1,4 +1,10 @@
 <template>
+  <div class="header">
+    <font-awesome-icon 
+      icon="circle-info" 
+      @click="infoShowing = !infoShowing"
+    />
+  </div>
   <div class="game-container" @keydown="handleKeydown" tabindex="0">
     <input
       ref="hiddenInput"
@@ -98,6 +104,73 @@
 
     <!-- Loading indicator -->
     <div v-if="loadingWords" class="loading">Loading word lists...</div>
+    <div v-if="infoShowing" class="message info-message">
+      <div class="message-header">
+        <font-awesome-icon 
+          icon="xmark" 
+          @click="infoShowing = !infoShowing"
+        />
+      </div>
+        <h2>How to Play Delaydle</h2>
+
+        <p>
+          Delaydle is a twist on the classic word guessing game. Your goal is to find the
+          hidden 5-letter word in 7 guesses, but there's a catch:
+          <strong>feedback is delayed by one guess.</strong>
+        </p>
+
+        <h3>The Delay</h3>
+
+        <p>
+          When you submit a guess, you won't immediately see how accurate it was.
+          Instead, the result for each guess is revealed <strong>after your next guess</strong>.
+        </p>
+
+        <p>
+          For example:
+        </p>
+
+        <ol>
+          <li>Enter your first guess — no feedback is shown yet.</li>
+          <li>Enter your second guess — feedback for your first guess is revealed.</li>
+          <li>Enter your third guess — feedback for your second guess is revealed.</li>
+          <li>Continue until you find the word or run out of guesses.</li>
+        </ol>
+
+        <h3>Tile Colors</h3>
+
+        <ul>
+          <li>
+            <strong>Green</strong> — The letter is in the correct position.
+          </li>
+          <li>
+            <strong>Yellow</strong> — The letter is in the word, but in a different position.
+          </li>
+          <li>
+            <strong>Gray</strong> — The letter is not in the word.
+          </li>
+        </ul>
+
+        <h3>Entering Guesses</h3>
+
+        <p>
+          You can type using the on-screen keyboard or your device's keyboard.
+          Press <strong>Enter</strong> to submit a guess and <strong>Backspace</strong>
+          to remove letters.
+        </p>
+
+        <h3>Tips</h3>
+
+        <ul>
+          <li>Remember that feedback is always one guess behind.</li>
+          <li>Plan ahead—you'll need to make each guess without knowing the result of your most recent one.</li>
+          <li>Keep track of revealed information to narrow down the answer.</li>
+        </ul>
+
+        <p>
+          Good luck, and see if you can master the delay!
+        </p>
+    </div>
   </div>
 </template>
 
@@ -130,6 +203,7 @@ const currentGuess = ref('');
 const allWords = ref<string[]>([]);
 const validGuesses = ref<string[]>([]);
 const loadingWords = ref(true);
+const infoShowing = ref(false);
 const statusMessage = ref('');
 const statusMessageType = ref<'error' | 'success' | 'info'>('info');
 
@@ -283,6 +357,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.header {
+  position: fixed;
+  top: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width:100%;
+  padding: 14px 28px;
+  background: rgba(256, 256, 256, 0.1);
+  color: white;
+  z-index: 1000;
+  text-align: right;
+}
+
+
 * {
   box-sizing: border-box;
 }
@@ -338,7 +426,6 @@ onMounted(async () => {
   background-color: #ef4444;
   color: white;
 }
-
 
 .game-board {
   display: flex;
@@ -612,6 +699,50 @@ onMounted(async () => {
   color: white;
   padding: 10px 12px;
   min-width: 60px;
+}
+
+.message {
+  .message-header {
+    text-align: right;
+    color: red;
+  }
+
+  h2 {
+      margin-bottom: 20px;
+  }
+
+  h3 {
+      margin-top: 24px;
+      margin-bottom: 10px;
+  }
+
+  p {
+      margin-bottom: 16px;
+  }
+
+  ol,
+  ul {
+      margin: 16px 0;
+      padding-left: 24px;
+  }
+
+  li {
+      margin-bottom: 8px;
+  }
+
+  text-align: left;
+  padding: 20px;
+  line-height: 1.6;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 1);
+  color: black;
+  max-width: 600px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @media (max-width: 600px) {
