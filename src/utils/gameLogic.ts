@@ -13,6 +13,8 @@ export interface GameState {
   won: boolean;
 }
 
+export const maxAttempts = 7;
+
 /**
  * Calculate feedback for a guess against the target word
  * Following Wordle rules with letter frequency handling
@@ -102,6 +104,6 @@ export function checkWin(guesses: GuessResult[]): boolean {
 /**
  * Check if the game is lost
  */
-export function checkLose(guesses: GuessResult[], maxAttempts: number = 7): boolean {
+export function checkLose(guesses: GuessResult[], maxAttempts: number): boolean {
   return guesses.length >= maxAttempts && !checkWin(guesses);
 }

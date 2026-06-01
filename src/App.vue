@@ -1,6 +1,5 @@
 <template>
   <div class="game-container" @keydown="handleKeydown" tabindex="0">
-    <!-- Hidden input for keyboard capture -->
     <input
       ref="hiddenInput"
       type="text"
@@ -8,7 +7,6 @@
     />
     <header class="game-header">
       <h1>Delaydle</h1>
-      <p class="subtitle">A delayed Wordle game - feedback on your last guess appears when you guess again!</p>
     </header>
 
     <!-- Game state messages -->
@@ -26,16 +24,27 @@
         <div
           v-for="(letter, letterIndex) in guess.word"
           :key="letterIndex"
-          :class="[
-            'tile',
-            guess.revealed ? `tile-${guess.feedback[letterIndex]}` : 'tile-empty'
-          ]"
-          :style="{
-            animationDelay: guess.revealed ? `${letterIndex * 0.8}s` : '0s',
-            animation: guess.revealed ? 'tileFlip 2s ease-in-out forwards' : 'none'
-          }"
+          class="tile"
         >
-          {{ letter.toUpperCase() }}
+          <div
+          class="tile-card"
+          :style="{
+              animationName: guess.revealed ? 'tileFlip' : 'none',
+              animationDuration: '0.35s',
+              animationTimingFunction: 'ease-in-out',
+              animationDelay: `${letterIndex * 0.3}s`,
+              animationFillMode: 'forwards'
+          }">
+            <div class="front">
+              {{ letter.toUpperCase() }}
+            </div>
+            <div :class="[
+              'back',
+              guess.revealed ? `tile-${guess.feedback[letterIndex]}` : 'tile-empty'
+          ]">
+              {{ letter.toUpperCase() }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -101,6 +110,7 @@ import {
   isValidWord,
   checkWin,
   checkLose,
+  maxAttempts,
   type GameState,
   type GuessResult,
   type LetterStatus,
@@ -136,7 +146,7 @@ const currentGuessDisplay = computed(() => {
 });
 
 const emptyRowsCount = computed(() => {
-  return Math.max(0, 7 - gameState.value.guesses.length - (gameState.value.gameOver ? 0 : 1));
+  return Math.max(0, maxAttempts - gameState.value.guesses.length - (gameState.value.gameOver ? 0 : 1));
 });
 
 const canSubmit = computed(() => {
@@ -150,10 +160,9 @@ const canSubmit = computed(() => {
 // Track letter statuses based on revealed guesses
 const letterStatuses = computed(() => {
   const statuses: Record<string, LetterStatus> = {};
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
   // Initialize all letters as empty
-  for (const letter of letters) {
+  for (const letter of keyboardRows.flat()) {
     statuses[letter] = 'empty';
   }
 
@@ -164,18 +173,11 @@ const letterStatuses = computed(() => {
         const letter = guess.word[i].toUpperCase();
         const feedback = guess.feedback[i];
 
-        // Only update if the new status is "better" than the current one
-        // Priority: correct > wrong-position > wrong > empty
-        const statusPriority: Record<LetterStatus, number> = {
-          'correct': 3,
-          'wrong-position': 2,
-          'wrong': 1,
-          'empty': 0,
-        };
-
-        if (statusPriority[feedback] > statusPriority[statuses[letter]]) {
-          statuses[letter] = feedback;
+        if (feedback == 'wrong-position' && statuses[letter] === 'correct') {
+          continue; 
         }
+        
+        statuses[letter] = feedback;        
       }
     }
   }
@@ -186,45 +188,33 @@ const letterStatuses = computed(() => {
 // Methods
 const submitGuess = async () => {
   if (!canSubmit.value) {
-    if (currentGuess.value.length !== 5) {
-      showStatus('Word must be 5 letters', 'error');
-    } else if (!isValidWord(currentGuess.value, validGuesses.value)) {
-      showStatus('Word not in dictionary', 'error');
-    }
     return;
   }
 
   const guess = currentGuess.value.toLowerCase();
   const feedback = calculateFeedback(guess, gameState.value.targetWord);
 
-  // Reveal the previous guess (if exists)
   if (gameState.value.guesses.length > 0) {
     gameState.value.guesses[gameState.value.guesses.length - 1].revealed = true;
   }
 
-  // Check if this guess is correct (winning guess)
   const isWinningGuess = feedback.every(status => status === 'correct');
 
-  // Add new guess - reveal immediately if it's a winning guess
   gameState.value.guesses.push({
     word: guess,
     feedback,
-    revealed: isWinningGuess, // Reveal immediately if correct
+    revealed: isWinningGuess
   });
 
-  // Check win condition
   if (isWinningGuess) {
     gameState.value.gameOver = true;
     gameState.value.won = true;
-    showStatus('Correct! You won!', 'success');
   }
 
   // Check lose condition
-  if (checkLose(gameState.value.guesses)) {
+  if (checkLose(gameState.value.guesses, maxAttempts)) {
     gameState.value.gameOver = true;
     gameState.value.won = false;
-    showStatus('Out of guesses!', 'error');
-    // Reveal the last guess when game ends
     if (gameState.value.guesses.length > 0) {
       gameState.value.guesses[gameState.value.guesses.length - 1].revealed = true;
     }
@@ -266,24 +256,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
-const showStatus = (message: string, type: 'error' | 'success' | 'info') => {
-  statusMessage.value = message;
-  statusMessageType.value = type;
-  setTimeout(() => {
-    statusMessage.value = '';
-  }, 3000);
-};
-
-const resetGame = async () => {
-  gameState.value.targetWord = getRandomWord(allWords.value);
-  gameState.value.guesses = [];
-  gameState.value.gameOver = false;
-  gameState.value.won = false;
-  currentGuess.value = '';
-  statusMessage.value = '';
-};
-
-// Lifecycle
 onMounted(async () => {
   try {
     const [words, guesses] = await Promise.all([
@@ -294,10 +266,8 @@ onMounted(async () => {
     allWords.value = words;
     validGuesses.value = [...words, ...guesses];
 
-    if (words.length > 0) {
-      gameState.value.targetWord = getRandomWord(words);
-    }
-
+    gameState.value.targetWord = getRandomWord(words);
+    
     loadingWords.value = false;
     
     // Focus the game container so it can receive keyboard events
@@ -307,7 +277,6 @@ onMounted(async () => {
     }, 0);
   } catch (error) {
     console.error('Failed to load words:', error);
-    showStatus('Error loading word lists', 'error');
     loadingWords.value = false;
   }
 });
@@ -370,16 +339,6 @@ onMounted(async () => {
   color: white;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .game-board {
   display: flex;
@@ -413,38 +372,32 @@ onMounted(async () => {
   transition: all 0.3s ease;
   animation: popIn 0.3s ease;
   perspective: 1000px;
-  transform-style: preserve-3d;
-}
 
-@keyframes popIn {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+  .tile-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
 
-@keyframes tileFlip {
-  0% {
-    transform: rotateY(0deg) rotateX(0deg) scale(1);
-    opacity: 1;
-  }
-  40% {
-    transform: rotateY(90deg) rotateX(5deg) scale(0.95);
-  }
-  100% {
-    transform: rotateY(0deg) rotateX(0deg) scale(1);
-    opacity: 1;
+    .front,
+    .back {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backface-visibility: hidden;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    .back {
+      transform: rotateY(180deg);
+    }
   }
 }
 
-.tile-empty {
+.tile-empty{
   background-color: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
@@ -547,29 +500,6 @@ onMounted(async () => {
 
 .keyboard-hint p {
   margin: 0;
-}
-
-.status-message {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 500;
-  margin-bottom: 15px;
-  animation: slideDown 0.3s ease-out;
-}
-
-.status-message.error {
-  background-color: #ef4444;
-  color: white;
-}
-
-.status-message.success {
-  background-color: #10b981;
-  color: white;
-}
-
-.status-message.info {
-  background-color: #3b82f6;
-  color: white;
 }
 
 .new-game-button {
@@ -721,6 +651,42 @@ onMounted(async () => {
     min-width: 32px;
     height: 36px;
     font-size: 0.75rem;
+  }
+}
+</style>
+
+<style>
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes tileFlip {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
   }
 }
 </style>
