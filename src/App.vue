@@ -4,6 +4,10 @@
       icon="circle-info" 
       @click="infoShowing = !infoShowing"
     />
+    <font-awesome-icon 
+      icon="sack-dollar" 
+      @click="supportShowing = !supportShowing"
+    />
   </div>
   <div class="game-container" @keydown="handleKeydown" tabindex="0">
     <input
@@ -111,6 +115,7 @@
           @click="infoShowing = !infoShowing"
         />
       </div>
+      <div class="message-body">
         <h2>How to Play Delaydle</h2>
 
         <p>
@@ -170,6 +175,38 @@
         <p>
           Good luck, and see if you can master the delay!
         </p>
+      </div>
+    </div>
+    <div v-if="supportShowing" class="message support-message">
+      <div class="message-header">
+        <font-awesome-icon 
+          icon="xmark" 
+          @click="supportShowing = !supportShowing"
+        />
+      </div>
+      <div class="message-body">
+        <h2>Support Delaydle</h2>
+        <p>I am actively working on improving Delaydle and more features are on the way!</p>
+        <p>
+          I would love to be able to add more complex features to Delayble, such as:
+        </p>
+        <ul>
+          <li>User profiles</li>
+          <li>Record tracking</li>
+          <li>Completion statistics</li>
+        </ul>
+        <p>
+          This would require a back end server though which would incur non trivial hosting costs. If you enjoy playing and would like to see these features implemented, please consider supporting the project! Even a small one off donation is really helpful and greatly appreciated.
+        </p>
+        <p>
+          <a href="https://buymeacoffee.com/delaydle" target="_blank" rel="noopener noreferrer">
+            Donate to Delaydle
+          </a>
+        </p>
+        <p>
+          Thanks for playing
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -204,6 +241,7 @@ const allWords = ref<string[]>([]);
 const validGuesses = ref<string[]>([]);
 const loadingWords = ref(true);
 const infoShowing = ref(false);
+const supportShowing = ref(false);
 const statusMessage = ref('');
 const statusMessageType = ref<'error' | 'success' | 'info'>('info');
 
@@ -370,7 +408,6 @@ onMounted(async () => {
   text-align: right;
 }
 
-
 * {
   box-sizing: border-box;
 }
@@ -405,16 +442,6 @@ onMounted(async () => {
   margin: 0;
   opacity: 0.9;
   max-width: 500px;
-}
-
-.message {
-  padding: 15px 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  text-align: center;
-  animation: slideDown 0.3s ease-out;
 }
 
 .win-message {
@@ -707,6 +734,11 @@ onMounted(async () => {
     color: red;
   }
 
+  .message-body{
+    overflow-y: auto;
+    max-height: 80vh;
+  }
+
   h2 {
       margin-bottom: 20px;
   }
@@ -736,13 +768,12 @@ onMounted(async () => {
   border-radius: 12px;
   background-color: rgba(255, 255, 255, 1);
   color: black;
-  max-width: 600px;
+  max-width: 70vw;
   position: fixed;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   max-height: 90vh;
-  overflow-y: auto;
 }
 
 @media (max-width: 600px) {
@@ -782,6 +813,11 @@ onMounted(async () => {
     min-width: 32px;
     height: 36px;
     font-size: 0.75rem;
+  }
+
+  .message {
+    width: 90vw;
+    max-width: none;
   }
 }
 </style>
