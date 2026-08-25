@@ -233,6 +233,18 @@
         <p v-if="gameState.won" class="result-detail">
           Solved in {{ gameState.guesses.length }} of {{ maxAttempts }} guesses.
         </p>
+
+        <pre class="share-grid">{{ shareGrid }}</pre>
+
+        <button class="share-btn" @click="copyShareText">
+          {{ shareCopied ? 'Copied!' : 'Share' }}
+        </button>
+
+        <!-- Clipboard access can be refused; fall back to selecting the text. -->
+        <div v-if="shareFailed" class="share-fallback">
+          <p>Copy this:</p>
+          <textarea ref="shareBox" readonly rows="10" :value="shareText"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -248,6 +260,7 @@ import {
   checkWin,
   checkLose,
   maxAttempts,
+  getPuzzleDate,
   type GameState,
   type GuessResult,
   type LetterStatus,
@@ -270,6 +283,55 @@ const loadingWords = ref(true);
 const infoShowing = ref(false);
 const supportShowing = ref(false);
 const resultShowing = ref(false);
+const shareCopied = ref(false);
+const shareFailed = ref(false);
+const shareBox = ref<HTMLTextAreaElement>();
+let shareCopiedTimer: ReturnType<typeof setTimeout> | undefined;
+
+const SQUARES: Record<LetterStatus, string> = {
+  correct: '🟩',
+  'wrong-position': '🟨',
+  wrong: '⬜',
+  empty: '⬜',
+};
+
+// The board as coloured squares, with no letters in them.
+const shareGrid = computed(() =>
+  gameState.value.guesses
+    .map(g => g.feedback.map(f => SQUARES[f]).join(''))
+    .join('\n')
+);
+
+const shareScore = computed(() =>
+  gameState.value.won ? `${gameState.value.guesses.length}/${maxAttempts}` : `X/${maxAttempts}`
+);
+
+const shareText = computed(() =>
+  `Delaydle ${getPuzzleDate()} ${shareScore.value}
+
+${shareGrid.value}
+
+https://delaydle.com`
+);
+
+async function copyShareText() {
+  try {
+    await navigator.clipboard.writeText(shareText.value);
+    shareFailed.value = false;
+    shareCopied.value = true;
+    clearTimeout(shareCopiedTimer);
+    shareCopiedTimer = setTimeout(() => {
+      shareCopied.value = false;
+    }, 2000);
+  } catch {
+    // No clipboard permission (or an insecure context): show the raw text
+    // pre-selected so it can still be copied by hand.
+    shareFailed.value = true;
+    await nextTick();
+    shareBox.value?.select();
+  }
+}
+
 const shaking = ref(false);
 let shakeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -886,6 +948,44 @@ onMounted(async () => {
 
 .result-lose h2 {
   color: #ef4444;
+}
+
+.share-grid {
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  letter-spacing: 2px;
+  margin: 16px 0;
+  text-align: center;
+}
+
+.share-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background-color: #10b981;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.share-btn:hover {
+  background-color: #059669;
+}
+
+.share-fallback textarea {
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: none;
 }
 
 .result-word {

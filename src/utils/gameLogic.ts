@@ -63,6 +63,17 @@ export async function loadWords(filePath: string): Promise<string[]> {
 }
 
 /**
+ * The local date, as the key that seeds the daily word.
+ */
+export function getPuzzleDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Get a random word from the list (seeded by date for daily word)
  */
 export function getRandomWord(words: string[]): string {
@@ -70,9 +81,7 @@ export function getRandomWord(words: string[]): string {
     return 'error';
   }
 
-  // Use date-based seed for daily word
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dateStr = getPuzzleDate();
 
   // Simple hash function for better distribution across any word list size
   let hash = 0;
