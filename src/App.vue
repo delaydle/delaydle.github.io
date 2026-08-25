@@ -19,14 +19,6 @@
       <h1>Delaydle</h1>
     </header>
 
-    <!-- Game state messages -->
-    <div v-if="gameState.won" class="message win-message">
-      🎉 You won! The word was <strong>{{ gameState.targetWord.toUpperCase() }}</strong>
-    </div>
-    <div v-if="gameState.gameOver && !gameState.won" class="message lose-message">
-      😢 Game over! The word was <strong>{{ gameState.targetWord.toUpperCase() }}</strong>
-    </div>
-
     <!-- Game board -->
     <div class="game-board">
       <!-- Submitted guesses with their feedback -->
@@ -208,6 +200,32 @@
         </p>
       </div>
     </div>
+    <!-- Result modal -->
+    <div
+      v-if="resultShowing"
+      class="modal-backdrop"
+      @click="resultShowing = false"
+    ></div>
+    <div
+      v-if="resultShowing"
+      :class="['message', 'result-message', gameState.won ? 'result-win' : 'result-lose']"
+    >
+      <div class="message-header">
+        <font-awesome-icon
+          icon="xmark"
+          @click="resultShowing = false"
+        />
+      </div>
+      <div class="message-body">
+        <h2>{{ gameState.won ? '🎉 You won!' : '😢 Game over' }}</h2>
+        <p class="result-word">
+          The word was <strong>{{ gameState.targetWord.toUpperCase() }}</strong>
+        </p>
+        <p v-if="gameState.won" class="result-detail">
+          Solved in {{ gameState.guesses.length }} of {{ maxAttempts }} guesses.
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -242,6 +260,7 @@ const validGuesses = ref<string[]>([]);
 const loadingWords = ref(true);
 const infoShowing = ref(false);
 const supportShowing = ref(false);
+const resultShowing = ref(false);
 const statusMessage = ref('');
 const statusMessageType = ref<'error' | 'success' | 'info'>('info');
 
@@ -298,6 +317,10 @@ const letterStatuses = computed(() => {
 });
 
 // Methods
+// One row's flip animation: the last tile starts at 4 * 0.3s of stagger and
+// runs for 0.35s (see the animation bindings on .tile-card), plus a short beat.
+const rowFlipMs = 1600;
+
 const submitGuess = async () => {
   if (!canSubmit.value) {
     return;
@@ -306,8 +329,10 @@ const submitGuess = async () => {
   const guess = currentGuess.value.toLowerCase();
   const feedback = calculateFeedback(guess, gameState.value.targetWord);
 
-  if (gameState.value.guesses.length > 0) {
-    gameState.value.guesses[gameState.value.guesses.length - 1].revealed = true;
+  // The delayed feedback: submitting reveals the *previous* guess.
+  const previousIndex = gameState.value.guesses.length - 1;
+  if (previousIndex >= 0) {
+    gameState.value.guesses[previousIndex].revealed = true;
   }
 
   const isWinningGuess = feedback.every(status => status === 'correct');
@@ -315,7 +340,7 @@ const submitGuess = async () => {
   gameState.value.guesses.push({
     word: guess,
     feedback,
-    revealed: isWinningGuess
+    revealed: false
   });
 
   if (isWinningGuess) {
@@ -327,12 +352,25 @@ const submitGuess = async () => {
   if (checkLose(gameState.value.guesses, maxAttempts)) {
     gameState.value.gameOver = true;
     gameState.value.won = false;
-    if (gameState.value.guesses.length > 0) {
-      gameState.value.guesses[gameState.value.guesses.length - 1].revealed = true;
-    }
   }
 
   currentGuess.value = '';
+
+  // Ending the game reveals two rows: the previous guess and the final one.
+  // Chain them so the final row only starts flipping once the previous row
+  // has finished, then let that settle before covering the board.
+  if (gameState.value.gameOver) {
+    const finalIndex = gameState.value.guesses.length - 1;
+    const finalRevealDelay = previousIndex >= 0 ? rowFlipMs : 0;
+
+    setTimeout(() => {
+      gameState.value.guesses[finalIndex].revealed = true;
+
+      setTimeout(() => {
+        resultShowing.value = true;
+      }, rowFlipMs);
+    }, finalRevealDelay);
+  }
 };
 
 const addLetterFromKeyboard = (letter: string) => {
@@ -442,16 +480,6 @@ onMounted(async () => {
   margin: 0;
   opacity: 0.9;
   max-width: 500px;
-}
-
-.win-message {
-  background-color: #10b981;
-  color: white;
-}
-
-.lose-message {
-  background-color: #ef4444;
-  color: white;
 }
 
 .game-board {
@@ -774,6 +802,51 @@ onMounted(async () => {
   top: 50%;
   transform: translate(-50%, -50%);
   max-height: 90vh;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1500;
+}
+
+.result-message {
+  z-index: 1600;
+  text-align: center;
+  min-width: 280px;
+  max-width: min(90vw, 420px);
+}
+
+.result-message .message-body {
+  text-align: center;
+  overflow-y: visible;
+}
+
+.result-message h2 {
+  margin-bottom: 12px;
+}
+
+.result-win h2 {
+  color: #10b981;
+}
+
+.result-lose h2 {
+  color: #ef4444;
+}
+
+.result-word {
+  font-size: 1.15rem;
+}
+
+.result-word strong {
+  letter-spacing: 0.12em;
+}
+
+.result-detail {
+  opacity: 0.7;
+  font-size: 0.95rem;
+  margin-bottom: 0;
 }
 
 @media (max-width: 600px) {
