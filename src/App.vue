@@ -51,7 +51,11 @@
       </div>
 
       <!-- Current guess (no feedback yet) -->
-      <div v-if="!gameState.gameOver" class="guess-row current-guess">
+      <div
+        v-if="!gameState.gameOver"
+        class="guess-row current-guess"
+        :class="{ shake: shaking }"
+      >
         <div
           v-for="(letter, index) in currentGuessDisplay"
           :key="index"
@@ -230,7 +234,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import {
   calculateFeedback,
   loadWords,
@@ -261,6 +265,36 @@ const loadingWords = ref(true);
 const infoShowing = ref(false);
 const supportShowing = ref(false);
 const resultShowing = ref(false);
+const shaking = ref(false);
+let shakeTimer: ReturnType<typeof setTimeout> | undefined;
+
+// A guess the player has finished typing that isn't a real word.
+function isRejectable(guess: string) {
+  return !loadingWords.value && guess.length === 5 && !isValidWord(guess, validGuesses.value);
+}
+
+async function triggerShake() {
+  // Drop the class and force a reflow before re-adding it, so a repeat
+  // rejection restarts the animation instead of being ignored while a
+  // previous shake is still running.
+  clearTimeout(shakeTimer);
+  shaking.value = false;
+
+  await nextTick();
+  void document.querySelector('.current-guess')?.offsetWidth;
+
+  shaking.value = true;
+  shakeTimer = setTimeout(() => {
+    shaking.value = false;
+  }, 500);
+}
+
+// Fires as soon as the fifth letter lands, from either input path.
+watch(currentGuess, (guess) => {
+  if (isRejectable(guess)) {
+    void triggerShake();
+  }
+});
 const statusMessage = ref('');
 const statusMessageType = ref<'error' | 'success' | 'info'>('info');
 
@@ -323,6 +357,10 @@ const rowFlipMs = 1600;
 
 const submitGuess = async () => {
   if (!canSubmit.value) {
+    // Enter on anything unsubmittable — too short, or not a real word.
+    if (!loadingWords.value && !gameState.value.gameOver) {
+      void triggerShake();
+    }
     return;
   }
 
@@ -918,6 +956,28 @@ onMounted(async () => {
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+.current-guess.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-7px); }
+  40%, 60% { transform: translateX(7px); }
+}
+
+/* A side-to-side shake is a vestibular trigger; fall back to a soft pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .current-guess.shake {
+    animation: shakeReduced 0.5s ease-in-out;
+  }
+
+  @keyframes shakeReduced {
+    50% { opacity: 0.55; }
   }
 }
 
