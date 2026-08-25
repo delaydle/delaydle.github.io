@@ -73,7 +73,12 @@
 
     <!-- Onscreen Keyboard -->
     <div v-if="!gameState.gameOver" class="keyboard-container">
-      <div v-for="row in keyboardRows" :key="row.join('')" class="keyboard-row">
+      <div
+        v-for="row in keyboardRows"
+        :key="row.join('')"
+        class="keyboard-row"
+        :style="{ maxWidth: `${(row.length / 10) * 100}%` }"
+      >
         <button
           v-for="letter in row"
           :key="letter"
@@ -728,12 +733,19 @@ onMounted(async () => {
   display: flex;
   gap: 6px;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .key {
-  padding: 10px 8px;
-  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 48px;
+  padding: 0 2px;
   height: 40px;
   border: none;
   border-radius: 6px;
@@ -790,8 +802,11 @@ onMounted(async () => {
   background-color: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   color: white;
-  padding: 10px 12px;
-  min-width: 60px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: none;
+  padding: 0 14px;
+  white-space: nowrap;
 }
 
 .message {
@@ -919,11 +934,18 @@ onMounted(async () => {
     padding: 12px;
   }
 
+  .keyboard-row {
+    gap: 4px;
+  }
+
   .key {
-    padding: 8px 6px;
-    min-width: 32px;
+    padding: 0 1px;
     height: 36px;
     font-size: 0.75rem;
+  }
+
+  .key-action {
+    padding: 0 10px;
   }
 
   .message {
