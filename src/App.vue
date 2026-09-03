@@ -16,7 +16,7 @@
       style="position: absolute; left: -9999px; opacity: 0;"
     />
     <header class="game-header">
-      <h1>Delaydle</h1>
+      <h1 aria-label="Delaydle"><DelaydleMark class="title-mark" aria-hidden="true" />elaydle</h1>
     </header>
 
     <!-- Game board -->
@@ -252,6 +252,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import DelaydleMark from './assets/logo.svg?component';
 import {
   calculateFeedback,
   loadWords,
@@ -544,11 +545,15 @@ onMounted(async () => {
   left: 50%;
   transform: translateX(-50%);
   width:100%;
-  padding: 14px 28px;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: 0 28px;
   background: rgba(256, 256, 256, 0.1);
   color: white;
   z-index: 1000;
-  text-align: right;
 }
 
 * {
@@ -561,8 +566,15 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  /* One oversized, centred mark watermarks the gradient behind the board. */
+  background-image: var(--mark-watermark), linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  background-size: auto 86vmin, cover;
+  background-attachment: fixed, fixed;
+  /* The header is fixed, so reserve its height here: the board starts below it
+     on load, and only slides behind it once the page is scrolled. */
+  padding: calc(var(--header-height) + 20px) 20px 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
@@ -578,6 +590,15 @@ onMounted(async () => {
   margin: 0 0 10px 0;
   font-weight: 900;
   letter-spacing: 2px;
+}
+
+/* The mark stands in for the capital D, so it tracks the cap height of the title */
+.title-mark {
+  height: 0.72em;
+  width: auto;
+  vertical-align: baseline;
+  margin-right: 0.04em;
+  overflow: visible;
 }
 
 .subtitle {

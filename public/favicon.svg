@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Delaydle">
+  <rect width="64" height="64" rx="14" fill="#764ba2"/>
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 15 H33 C42.5 15 49 23 49 32 C49 41 42.5 49 33 49 H19 Z"/>
+    <path d="M33 24 V32 H40"/>
+  </g>
+</svg>
